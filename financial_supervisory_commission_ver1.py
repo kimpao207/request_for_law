@@ -7,11 +7,10 @@ import math
 
 tables_url = 'https://www.fsc.gov.tw/ch/home.jsp?id=3&parentpath=0&contentid=128&mcustomize=lawnew_list.jsp&pagesize=100&page='
 content_path = 'content/'
-# 送出pagesize = 100還是會維持一頁只有15筆資料，不知道為甚麼
 
 
 def request_data_num():
-    # 取得共有幾頁
+    # 取得共有幾筆資料
     soup = request_fun(tables_url + str(1))
     return int(soup.select('.red')[0].text)
 
@@ -24,7 +23,8 @@ def request_all_table():
 
     total_data = '<div class="newslist" role="table"><ul role="rowgroup">'
 
-    page_num = math.ceil(request_data_num() / 100) // 3
+    # 資料總數除以一頁幾筆資料，獲得共有幾頁
+    page_num = math.ceil(request_data_num() / 100)
 
     for i in range(1, page_num + 1):
         print('start page', i)
