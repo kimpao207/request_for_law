@@ -11,7 +11,7 @@ table_path = 'table/'
 
 
 def request_data_num():
-    # 取得共有幾頁
+    # 取得共有幾筆資料
     soup = request_fun(tables_url + str(1))
     return int(soup.select('.red')[0].text)
 
@@ -23,7 +23,8 @@ def request_all_table():
     if not os.path.exists(table_path):
         os.mkdir(table_path)
 
-    page_num = math.ceil(request_data_num() / 100) // 3
+    # 資料總數除以一頁幾筆資料，獲得共有幾頁
+    page_num = math.ceil(request_data_num() / 100)
 
     for i in range(1, page_num + 1):
         print('start page', i)
