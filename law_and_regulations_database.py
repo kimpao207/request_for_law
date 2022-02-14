@@ -131,4 +131,4 @@ if __name__ == '__main__':
     # 執行前先開啟webdriver，增加存圖的速度
     browser = webdriver.PhantomJS()
     request_all_table()
-    browser.close()
+    browser.quit()
