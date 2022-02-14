@@ -36,7 +36,7 @@ def request_page_num():
 def request_all_table():
     db = DataBase()
 
-    page_num = 2 # request_page_num()
+    page_num = request_page_num()
 
     for i in range(1, page_num + 1):
         print('start page', i)
