@@ -9,6 +9,20 @@ total_content_url = 'https://www.laws.taipei.gov.tw/Law/LawInterpretation/LawInt
 total_extra_url = 'https://www.laws.taipei.gov.tw'
 
 
+class DataBase:
+    def __init__(self):
+        self.db = pickledb.load('Law_and_Regulation.db', True)
+
+    def get(self, key):
+        return self.db.get(key)
+
+    def set(self, key, value):
+        self.db.set(key, value)
+
+    def dump(self):
+        self.db.dump()
+
+
 def request_page_num():
     # 取得共有幾頁
     soup = request_fun(tables_url + str(1))
@@ -17,7 +31,7 @@ def request_page_num():
 
 
 def request_all_table():
-    db = pickledb.load('Law_and_Regulation.db', False)
+    db = DataBase()
 
     page_num = request_page_num()
 
