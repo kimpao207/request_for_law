@@ -3,6 +3,9 @@ from bs4 import BeautifulSoup as bs
 from fake_useragent import UserAgent
 from retrying import retry
 import pickledb
+from selenium import webdriver
+import base64
+import os
 
 tables_url = 'https://www.laws.taipei.gov.tw/Law/LawIntegrated/LawIntegratedSearchResult?criteria.searchTypes=%E4%B8%AD%E5%A4%AE%E8%A7%A3%E9%87%8B%E4%BB%A4%E5%87%BD&criteria.orderBy=%E4%BE%9D%E6%97%A5%E6%9C%9F&criteria.searchString1=&criteria.searchString2=&criteria.searchString3=&criteria.searchAnd1=AND&criteria.searchAnd2=AND&criteria.dateFrom=0100101&criteria.dateTo=&criteria.word=&criteria.number=&criteria.showType=&type=%E4%B8%AD%E5%A4%AE%E8%A7%A3%E9%87%8B%E4%BB%A4%E5%87%BD&page='
 total_content_url = 'https://www.laws.taipei.gov.tw/Law/LawInterpretation/LawInterpretationContentPrint?soid='
@@ -33,7 +36,7 @@ def request_page_num():
 def request_all_table():
     db = DataBase()
 
-    page_num = request_page_num()
+    page_num = 2 # request_page_num()
 
     for i in range(1, page_num + 1):
         print('start page', i)
@@ -64,8 +67,10 @@ def request_all_table():
                     content_url = total_content_url + str(soid)
                     print('start content', j + 1)
                     content = request_each_content(content_url, '.law')
+                    content_img = get_base64_screenshot(content_url)
                     print('done content', j + 1)
                     dict_tmp['html'] = str(content)
+                    dict_tmp['htmlImg'] = str(content_img, 'utf-8')
                 else:
                     continue
 
@@ -74,14 +79,32 @@ def request_all_table():
                 extra_url = total_extra_url + links[1]['href']
                 print('start extra link', j + 1)
                 extra = request_each_content(extra_url, '.col-article')
+                extra_img = get_base64_screenshot(extra_url)
                 print('done extra link', j + 1)
                 dict_tmp['norm'] = str(extra)
-            
+                dict_tmp['normImg'] = str(extra_img, 'utf-8')
+
             dict_tmp['image'] = ''
             db.set(soid, dict_tmp)
 
         print('done page', i)
     db.dump()
+
+
+def get_base64_screenshot(url):
+    # 用selenium + phantomjs對網頁截圖
+    browser.get(url)
+    browser.maximize_window()
+    browser.save_screenshot('tmp.png')
+
+    # 讀取截圖並轉成base64
+    with open('tmp.png', 'rb') as f:
+        image_data = f.read()
+        base64_data = base64.b64encode(image_data)
+
+    # 移除暫存圖片
+    os.remove('tmp.png')
+    return base64_data
 
 
 def request_each_content(content_url, select_item):
@@ -105,4 +128,7 @@ def request_fun(url):
 
 
 if __name__ == '__main__':
+    # 執行前先開啟webdriver，增加存圖的速度
+    browser = webdriver.PhantomJS()
     request_all_table()
+    browser.close()
