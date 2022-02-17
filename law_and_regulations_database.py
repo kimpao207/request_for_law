@@ -4,6 +4,7 @@ from fake_useragent import UserAgent
 from retrying import retry
 import pickledb
 from selenium import webdriver
+from selenium.webdriver.chrome.options import Options
 import base64
 import os
 
@@ -16,8 +17,8 @@ class DataBase:
     def __init__(self):
         self.db = pickledb.load('Law_and_Regulation.db', True)
 
-    def get(self, key):
-        return self.db.get(key)
+    def exist(self, key):
+        return self.db.exists(key)
 
     def set(self, key, value):
         self.db.set(key, value)
@@ -58,7 +59,7 @@ def request_all_table():
                 soid = content_url_tmp[content_url_tmp.find('soid=')
                                        + len(str('soid=')):content_url_tmp.find('&typeName=')]
                 # 檢查是否有在資料庫內，如果有的話直接跳下一項
-                if not db.get(soid):
+                if not db.exist(soid):
                     # 存發文字號
                     dict_tmp['issue_no'] = links[0].text.strip()
                     # 存要旨
@@ -84,7 +85,6 @@ def request_all_table():
                 dict_tmp['norm'] = str(extra)
                 dict_tmp['normImg'] = str(extra_img, 'utf-8')
 
-            dict_tmp['image'] = ''
             db.set(soid, dict_tmp)
 
         print('done page', i)
@@ -92,10 +92,13 @@ def request_all_table():
 
 
 def get_base64_screenshot(url):
-    # 用selenium + phantomjs對網頁截圖
+    # 用selenium + chromedriver對網頁截圖
     browser.get(url)
-    browser.maximize_window()
-    browser.save_screenshot('tmp.png')
+    # browser.maximize_window()
+    width = browser.execute_script("return document.documentElement.scrollWidth")
+    height = browser.execute_script("return document.documentElement.scrollHeight")
+    browser.set_window_size(width, height)
+    browser.get_screenshot_as_file('tmp.png')
 
     # 讀取截圖並轉成base64
     with open('tmp.png', 'rb') as f:
@@ -129,6 +132,11 @@ def request_fun(url):
 
 if __name__ == '__main__':
     # 執行前先開啟webdriver，增加存圖的速度
-    browser = webdriver.PhantomJS()
+    # browser = webdriver.PhantomJS()
+    chrome_options = Options()
+    chrome_options.add_argument('--headless')
+    chrome_options.add_argument('--disable-gpu')
+    browser = webdriver.Chrome(options=chrome_options)
     request_all_table()
-    browser.quit()
+    browser.close()
+
