@@ -8,8 +8,12 @@ from selenium.webdriver.chrome.options import Options
 import base64
 import os
 import random
+from PIL import Image
 
 base_url = 'https://lis.ly.gov.tw/'
+# for screenshot
+height_size = 50000
+bias = 100
 
 
 class DataBase:
@@ -31,7 +35,6 @@ class DataBase:
 
 def driver(need_option, options):
     return webdriver.Chrome() if not need_option else webdriver.Chrome(options=options)
-    #return webdriver.PhantomJS()
 
 
 def get_to_browser_category():
@@ -160,11 +163,16 @@ def request_content(url):
 def get_base64_screenshot(url):
     # 對網頁截圖
     screenshot_browser.get(url)
-    screenshot_browser.maximize_window()
-    # width = screenshot_browser.execute_script("return document.documentElement.scrollWidth")
-    # height = screenshot_browser.execute_script("return document.documentElement.scrollHeight")
-    # screenshot_browser.set_window_size(width, height)
-    screenshot_browser.get_screenshot_as_file('tmp.png')
+    width = screenshot_browser.execute_script("return document.documentElement.scrollWidth")
+    height = screenshot_browser.execute_script("return document.documentElement.scrollHeight")
+
+    # 若高度超過100000時, 用分段截圖後合併圖像的方式來處理
+    if height > 100000:
+        print('segmented screenshot')
+        long_screenshot(width)
+    else:
+        screenshot_browser.set_window_size(width, height)
+        screenshot_browser.get_screenshot_as_file('tmp.png')
 
     # 讀取截圖並轉成base64
     with open('tmp.png', 'rb') as f:
@@ -174,6 +182,39 @@ def get_base64_screenshot(url):
     # 移除暫存圖片
     os.remove('tmp.png')
     return base64_data
+
+
+def long_screenshot(width):
+    # 設定視窗大小, bias為避免出現橫條擋住文字
+    screenshot_browser.set_window_size(width + bias, height_size)
+    # 調整後的視窗總長會變短
+    total_height = screenshot_browser.execute_script("return document.documentElement.scrollHeight")
+    count = total_height // height_size
+    surplus_height = total_height - count * height_size
+
+    for i in range(0, count):
+        # 重複截高度為height_size的視窗畫面
+        js = "scrollTo(0,%s)" % (i * height_size)
+        screenshot_browser.execute_script(js)
+        screenshot_browser.get_screenshot_as_file('%s.png' % i)
+    else:
+        # 考慮到會有剩下不足height_size的部分需要截圖, 最後調整視窗高度進行截圖
+        screenshot_browser.set_window_size(width + bias, surplus_height)
+        js = "scrollTo(0,%s)" % total_height
+        screenshot_browser.execute_script(js)
+        screenshot_browser.get_screenshot_as_file('%s.png' % count)
+
+    # 用pillow進行圖的合併
+    new_img = Image.new("RGB", (width + bias, total_height))
+    k = 0
+    for i in range(0, count + 1):
+        tmp_img = Image.open('%s.png' % i)
+        # 把圖片貼在上一張圖的下面
+        new_img.paste(tmp_img, (0, height_size * k))
+        k += 1
+        os.remove('%s.png' % i)
+    else:
+        new_img.save("tmp.png")
 
 
 @retry(stop_max_attempt_number=3)
@@ -188,10 +229,11 @@ def request_fun(url):
 
 if __name__ == '__main__':
     operate_browser = driver(False, '')
-    # chrome_options = Options()
-    # chrome_options.add_argument('--headless')
-    # chrome_options.add_argument('--disable-gpu')
-    screenshot_browser = webdriver.PhantomJS()
+    chrome_options = Options()
+    chrome_options.add_argument('--headless')
+    chrome_options.add_argument('--disable-gpu')
+    screenshot_browser = driver(True, chrome_options)
     get_all_data()
     screenshot_browser.close()
     operate_browser.quit()
+
