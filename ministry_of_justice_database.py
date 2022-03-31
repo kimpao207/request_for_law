@@ -96,7 +96,6 @@ def request_all_table():
             db.set(entry_id, dict_tmp)
 
         print('done page', i)
-        break
 
     db.dump()
 
