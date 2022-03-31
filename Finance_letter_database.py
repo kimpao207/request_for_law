@@ -71,10 +71,9 @@ def request_all_table():
             dict_tmp = {}
             content_url_tmp = entry.select('a')[0]['href']
             # xItem為key
-            item_id = content_url_tmp[content_url_tmp.find('xItem=')
-                                      + len(str('xItem=')):content_url_tmp.find('&')]
+            xItem = content_url_tmp[content_url_tmp.find('xItem=') + len(str('xItem=')):content_url_tmp.find('&')]
 
-            if not db.exist(item_id):
+            if not db.exist(xItem):
                 # 把前五個欄位(跳過分類)的文字取出來，用前面col中的欄位存
                 tds_tmp = entry.select('td')
                 for td_idx, td in enumerate(tds_tmp):
@@ -100,7 +99,7 @@ def request_all_table():
                 dict_tmp['html'] = str(content)
                 dict_tmp['htmlImg'] = str(content_img, 'utf-8')
 
-                db.set(item_id, dict_tmp)
+                db.set(xItem, dict_tmp)
             else:
                 print('existed')
                 continue
