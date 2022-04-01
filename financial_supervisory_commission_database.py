@@ -13,7 +13,7 @@ tables_url = 'https://www.fsc.gov.tw/ch/home.jsp?id=3&parentpath=0&contentid=128
 content_base_url = 'https://www.fsc.gov.tw/ch/'
 
 # {
-#     '202203290002'(dataserno):{
+#     '金管保產字第11104910131號'(entry_id):{
 #         'title': '修正「保險商品銷售前程序作業準則」',
 #         'date': "2022-03-29",
 #         'source': "保險局",
@@ -61,11 +61,15 @@ def request_all_table():
         table = table_soup.select('.newslist li')[1:]
         for idx, entry in enumerate(table):
             dict_tmp = {}
-            link_tmp = entry.select('a')[0]['href']
-            # dataserno為key
-            dataserno = link_tmp[link_tmp.find('dataserno=') + len(str('dataserno=')):link_tmp.find('&dtable=')]
+            content_url = content_base_url + entry.select('a')[0]['href']
+            print('start content', idx + 1)
+            # entry_id為key，但需要先request一次才能取得
+            # 有些內容沒有發文字號，會自動改用標題
+            content, entry_id = request_each_content(content_url)
+            content_img = get_base64_screenshot(content_url)
+            print('done content', idx + 1)
 
-            if not db.exist(dataserno):
+            if not db.exist(entry_id):
                 # 存標題
                 dict_tmp['title'] = entry.select('a')[0].text
                 # 存發布日期
@@ -73,18 +77,13 @@ def request_all_table():
                 # 存資料來源
                 dict_tmp['source'] = entry.select('.unit')[0].text
 
-                content_url = content_base_url + link_tmp
-                print('start content', idx + 1)
-                content = request_each_content(content_url)
-                content_img = get_base64_screenshot(content_url)
-                print('done content', idx + 1)
                 # 存html跟圖
                 dict_tmp['html'] = str(content)
                 dict_tmp['htmlImg'] = str(content_img, 'utf-8')
 
-                db.set(dataserno, dict_tmp)
+                db.set(entry_id, dict_tmp)
             else:
-                print('existed', dataserno)
+                print('existed', entry_id)
                 continue
 
         print('done page', i)
@@ -115,7 +114,14 @@ def request_each_content(content_url):
     # 取得每條項目中連結的內容
     content_soup = request_fun(content_url)
     content = content_soup.select('#ap')[0]
-    return content
+    tmp = content_soup.select('.main-a_03')[0].text
+    if tmp.find('發文字號：') != -1:
+        tmp = tmp[tmp.find('發文字號：') + len('發文字號：'):]
+        content_id = tmp[:tmp.find('\n')]
+    else:
+        content_id = content_soup.select('.subject')[0].text.strip()
+        print("issue no. not existed, instead ,use the title")
+    return content, content_id
 
 
 @retry(stop_max_attempt_number=3)
